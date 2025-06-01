@@ -15,18 +15,44 @@
 WordCounter::WordCounter(std::size_t threadCount) 
     : m_threadCount(threadCount == 0 ? std::thread::hardware_concurrency() : threadCount) {
 
-    if (m_threadCount == 0) {
-        m_threadCount = 1; 
-    }
-
     try {
-        std::locale::global(std::locale("C"));
-        std::cout.imbue(std::locale("C"));
-    } catch (const std::runtime_error& e) {
-        std::cerr << "Warning: Failed to set locale. Using default locale. Error: " << e.what() << std::endl;
+        std::vector<std::string> utf8Locales = {
+            "en_US.UTF-8", "C.UTF-8", "POSIX.UTF-8", 
+            "pl_PL.UTF-8", "de_DE.UTF-8", "fr_FR.UTF-8"
+        };
+        
+        bool localeSet = false;
+        
+        for (const auto& locale : utf8Locales) {
+            
+            try {
+                std::locale::global(std::locale(locale));
+                std::cout.imbue(std::locale(locale));
+                std::cerr << "Using locale: " << locale << std::endl;
+                localeSet = true;
+                break;
+            } catch (const std::runtime_error&) {
+                continue; 
+            }
+        }
+        
+        if (!localeSet) {
+            std::cerr << "Warning: Could not set UTF-8 locale. International characters may not display correctly." << std::endl;
+            
+            try {
+                std::locale::global(std::locale(""));
+                std::cout.imbue(std::locale(""));
+            } catch (const std::runtime_error& e) {
+                std::cerr << "Warning: Failed to set any locale. Using C locale. Error: " << e.what() << std::endl;
+                std::locale::global(std::locale("C"));
+                std::cout.imbue(std::locale("C"));
+            }
+        }
+    } catch (const std::exception& e) {
+        std::cerr << "Warning: Locale setup failed. Using default locale. Error: " << e.what() << std::endl;
     }
 
-    std::cout << "Using " << m_threadCount << " threads for processing for word processing." << std::endl;
+    std::cout << "Using " << m_threadCount << " threads for word processing." << std::endl;
 }
 
 void WordCounter::processFiles(const std::vector<std::string>& filePaths) {

@@ -28,22 +28,43 @@ WordCountStats WordProcessor::processFile(const std::string& filePath) {
         throw Exceptions::FileProcessingException(filePath, e.what());
     }
 
-    auto endTIme = std::chrono::high_resolution_clock::now();
-    stats.processingTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTIme - startTIme);
+    auto endTime = std::chrono::high_resolution_clock::now();
+    stats.processingTime = std::chrono::duration_cast<std::chrono::milliseconds>(endTime - startTIme);
 
     return stats;
 }
 
 std::string WordProcessor::readFileContents(const std::string& filePath) {
-    std::ifstream file(filePath);
+    bool isUTF8 = Utils::isUTF8File(filePath);
+    
+    std::ifstream file(filePath, std::ios::binary);
     
     if (!file) {
         throw Exceptions::FileNotFoundException(filePath);
     }
 
+    std::string content;
+    
+    if (isUTF8) {
+        char bom[3];
+        file.read(bom, 3);
+        
+        if (file.gcount() == 3 && 
+            static_cast<unsigned char>(bom[0]) == 0xEF &&
+            static_cast<unsigned char>(bom[1]) == 0xBB &&
+            static_cast<unsigned char>(bom[2]) == 0xBF) {
+
+        } else {
+
+            file.seekg(0);
+        }
+    }
+
     std::stringstream buffer;
     buffer << file.rdbuf();
-    return buffer.str();
+    content = buffer.str();
+
+    return content;
 }
 
 std::unordered_map<std::string, std::size_t> WordProcessor::countWords(const std::string& text) {
